@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>趣味标点符号大挑战</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.1.0/style.css');
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+        
+        body {
+            font-family: 'LXGW WenKai Screen', 'LXGW WenKai', 'STKaiti', 'KaiTi', 'KaiTi_GB2312', 'ZCOOL KuaiLe', cursive, sans-serif;
+            background-color: #f0fdf4;
+            background-image: radial-gradient(#dcfce7 2px, transparent 2px);
+            background-size: 30px 30px;
+            touch-action: manipulation;
+        }
+
+        .game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            padding-bottom: 90px;
+        }
+
+        .question-box {
+            background-color: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            border: 4px dashed #6ee7b7;
+            font-size: 1.6rem;
+            line-height: 2.6;
+            color: #1e3a8a;
+            position: relative;
+        }
+
+        /* 拖拽目标区域（空槽） */
+        .drop-zone {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 44px;
+            height: 44px;
+            border: 2.5px dashed #9ca3af;
+            border-radius: 10px;
+            vertical-align: middle;
+            margin: 0 6px;
+            background-color: #f9fafb;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+            font-size: 1.6rem;
+            font-weight: bold;
+        }
+
+        .drop-zone.drag-over {
+            background-color: #fef08a;
+            border-color: #eab308;
+            transform: scale(1.15);
+        }
+        
+        .drop-zone.filled {
+             border: 2px solid #3b82f6;
+             background-color: #eff6ff;
+             color: #1d4ed8;
+             font-weight: bold;
+        }
+
+        .punctuation-pool {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+            background: white;
+            padding: 18px;
+            border-radius: 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        .punctuation-item {
+            width: 52px;
+            height: 52px;
+            background-color: #fef08a;
+            border: 3px solid #eab308;
+            border-radius: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #b45309;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            box-shadow: 0 4px 0 #ca8a04;
+            transition: transform 0.1s, box-shadow 0.1s;
+            touch-action: none;
+        }
+
+        .punctuation-item:active {
+            cursor: grabbing;
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #ca8a04;
+        }
+
+        .punctuation-item.selected {
+            border-color: #2563eb;
+            background-color: #bfdbfe;
+            color: #1d4ed8;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
+            transform: scale(1.1);
+        }
+
+        .btn-submit {
+            background: linear-gradient(to bottom, #4ade80, #22c55e);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 14px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #16a34a, 0 10px 15px rgba(0,0,0,0.1);
+            transition: all 0.1s;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .btn-submit:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #16a34a, 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn-submit:disabled {
+            background: #d1d5db;
+            box-shadow: 0 6px 0 #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.7;
+        }
+
+        /* 结果动画 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+            20%, 40%, 60%, 80% { transform: translateX(6px); }
+        }
+        .wrong-anim { animation: shake 0.5s; border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+        
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .correct-anim { animation: pop 0.5s; border-color: #22c55e !important; background-color: #f0fdf4 !important; }
+
+        /* 隐藏的拖动副本（用于触摸设备） */
+        .drag-ghost {
+            position: fixed;
+            pointer-events: none;
+            opacity: 0.9;
+            z-index: 9999;
+            width: 52px;
+            height: 52px;
+            background-color: #fef08a;
+            border: 3px solid #2563eb;
+            border-radius: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #1d4ed8;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            transform: translate(-50%, -50%);
+        }
+
+        #celebration {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f0fdf4;
+            background-image: radial-gradient(#dcfce7 2px, transparent 2px);
+            background-size: 30px 30px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #main-game-ui {
+            display: none;
+            overflow: auto;
+        }
+
+        .nav-btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 18px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #2563eb;
+            transition: all 0.1s;
+        }
+
+        .nav-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #2563eb;
+        }
+
+        .nav-btn:disabled {
+            background-color: #9ca3af;
+            box-shadow: 0 4px 0 #6b7280;
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.6;
+        }
+
+        .nav-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 50;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1 class="text-5xl md:text-7xl font-bold text-green-600 drop-shadow-lg mb-8 text-center">✨ 趣味标点符号 ✨<br><span class="text-4xl md:text-6xl text-blue-500">大挑战</span></h1>
+        <p class="text-xl md:text-2xl text-gray-700 mb-8 max-w-lg text-center leading-relaxed">
+            拖动或点按标点符号，填入句子的空白处。<br>看看你能答对多少题吧！
+        </p>
+        <button class="btn-submit" onclick="startGame()">开始游戏 🚀</button>
+    </div>
+
+    <div class="game-container" id="main-game-ui">
+        <!-- 头部信息 -->
+        <div class="relative flex flex-col md:flex-row justify-center items-center mb-6 gap-4">
+            <h1 class="text-2xl md:text-3xl font-bold text-green-600 drop-shadow-md text-center z-10 w-full">✨ 趣味标点符号大挑战 ✨</h1>
+            <div class="md:absolute md:right-0 text-lg md:text-xl bg-white px-4 py-2 rounded-full shadow border-2 border-green-200 z-20">
+                进度: <span id="progress" class="text-green-600 font-bold">1 / 20</span>
+            </div>
+        </div>
+
+        <!-- 题目区域 -->
+        <div class="question-box" id="question-container">
+            <!-- 题目内容动态生成 -->
+        </div>
+
+        <!-- 标点符号池 -->
+        <div id="instruction-text" class="text-center mb-3 text-gray-600 font-bold text-lg">
+            拖动符号到方框里，或点击符号后再点击方框填入！
+        </div>
+        <div class="punctuation-pool" id="pool">
+            <div class="punctuation-item" draggable="true" data-punct="，">，</div>
+            <div class="punctuation-item" draggable="true" data-punct="。">。</div>
+            <div class="punctuation-item" draggable="true" data-punct="、">、</div>
+            <div class="punctuation-item" draggable="true" data-punct="？">？</div>
+            <div class="punctuation-item" draggable="true" data-punct="！">！</div>
+            <div class="punctuation-item" draggable="true" data-punct="：">：</div>
+            <div class="punctuation-item" draggable="true" data-punct="“">“</div>
+            <div class="punctuation-item" draggable="true" data-punct="”">”</div>
+        </div>
+
+        <!-- 提交按钮 -->
+        <button class="btn-submit" id="submit-btn" disabled>提交答案</button>
+
+        <!-- 提示信息 -->
+        <div id="message" class="text-center mt-4 text-xl font-bold h-8"></div>
+        
+        <!-- 底部导航按钮 -->
+        <div class="nav-container" id="nav-buttons" style="display: none;">
+            <button class="nav-btn" id="prev-btn" onclick="goToPrevQuestion()">⬅️ 上一题</button>
+            <button class="nav-btn" id="next-btn" onclick="goToNextQuestion()">下一题 ➡️</button>
+            <button class="nav-btn" id="exit-review-btn" onclick="exitReview()" style="display: none; background-color: #f59e0b; box-shadow: 0 4px 0 #d97706;">🏠 结束回看</button>
+        </div>
+    </div>
+
+    <div id="celebration">
+        <h2 class="text-5xl font-bold text-yellow-300 mb-4 drop-shadow-lg">🎉 恭喜完成！ 🎉</h2>
+        <div id="score-display" class="text-3xl font-bold text-white mb-6 bg-green-600/80 px-6 py-3 rounded-2xl border-2 border-yellow-300 shadow-lg text-center">
+            <!-- 动态渲染分数 -->
+        </div>
+        <p class="text-2xl mb-8 text-center max-w-md" id="celebration-subtitle">你是一个标点符号小专家！</p>
+        <div class="flex flex-col md:flex-row gap-4">
+            <button class="btn-submit" onclick="startGame()">再玩一次 🔄</button>
+            <button class="btn-submit" style="background: linear-gradient(to bottom, #3b82f6, #2563eb); box-shadow: 0 6px 0 #1d4ed8;" onclick="startReview()">回看答题痕迹 🔍</button>
+        </div>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        let activeAudioNodes = [];
+        let soundTimeouts = [];
+
+        function clearSoundTimeouts() {
+            soundTimeouts.forEach(id => clearTimeout(id));
+            soundTimeouts = [];
+        }
+
+        function stopAllSounds() {
+            clearSoundTimeouts();
+            activeAudioNodes.forEach(osc => {
+                try { osc.stop(); } catch(e) {}
+            });
+            activeAudioNodes = [];
+        }
+
+        function playTone(frequency, type, duration) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + duration);
+
+            activeAudioNodes.push(oscillator);
+            oscillator.onended = () => {
+                const index = activeAudioNodes.indexOf(oscillator);
+                if (index > -1) activeAudioNodes.splice(index, 1);
+            };
+        }
+
+        const soundEffects = {
+            correct: () => {
+                stopAllSounds();
+                // 持续约3秒的欢快特效音
+                const notes = [
+                    523.25, 659.25, 783.99, 1046.50,
+                    1318.51, 1567.98, 1046.50,
+                    1318.51, 1567.98, 2093.00
+                ];
+                
+                notes.forEach((freq, index) => {
+                    const tid = setTimeout(() => playTone(freq, 'sine', 0.25), index * 100);
+                    soundTimeouts.push(tid);
+                });
+                
+                const tid2 = setTimeout(() => {
+                    playTone(523.25, 'triangle', 1.2);
+                    playTone(659.25, 'triangle', 1.2);
+                    playTone(783.99, 'triangle', 1.2);
+                    playTone(1046.50, 'triangle', 1.2);
+                }, notes.length * 100);
+                soundTimeouts.push(tid2);
+            },
+            wrong: () => {
+                stopAllSounds();
+                playTone(200, 'sawtooth', 0.3);
+                setTimeout(() => playTone(150, 'sawtooth', 0.4), 150);
+            },
+            drop: () => {
+                playTone(500, 'sine', 0.1);
+            }
+        };
+
+        const questions = [
+            { text: "妹妹喜欢吃苹果{0}香蕉和木瓜{1}", answers: ["、", "。"] },
+            { text: "我在动物园里看到了老虎{0}猴子和大象{1}", answers: ["、", "。"] },
+            { text: "妈妈问弟弟{0}{1}你要吃面包{2}饼干还是蛋糕{3}{4}", answers: ["：", "“", "、", "？", "”"] },
+            { text: "姐姐说{0}{1}这件裙子好漂亮啊{2}{3}", answers: ["：", "“", "！", "”"] },
+            { text: "老师问小丽{0}{1}你喜欢什么颜色{2}{3}", answers: ["：", "“", "？", "”"] },
+            { text: "爸爸对妈妈说{0}{1}我去上班了{2}{3}", answers: ["：", "“", "。", "”"] },
+            { text: "花园里开满了五颜六色的花儿{0}有红色{1}黄色{2}橙色和紫色{3}", answers: ["：", "、", "、", "。"] },
+            { text: "天亮了{0}辛勤的农夫们都到田里去工作{1}", answers: ["，", "。"] },
+            { text: "小猫们玩着一团团毛线{0}真可爱啊{1}", answers: ["，", "！"] },
+            { text: "爷爷的果园里种了芒果树{0}香蕉树{1}榴莲树和木瓜树{2}", answers: ["、", "、", "。"] },
+            { text: "广播员温柔地提醒游客{0}{1}请大家保管好手机{2}钱包{3}钥匙等物品{4}{5}", answers: ["：", "“", "、", "、", "。", "”"] },
+            { text: "美术老师笑眯眯地对同学们说{0}{1}今天我们要用到的材料有剪刀{2}胶水{3}彩纸和画笔{4}{5}", answers: ["：", "“", "、", "、", "。", "”"] },
+            { text: "妈妈从超市买回了许多蔬菜{0}对我说{1}{2}我买了白菜{3}萝卜{4}番茄和土豆{5}今晚我们吃火锅吧{6}{7}", answers: ["，", "：", "“", "、", "、", "，", "！", "”"] },
+            { text: "体育课上{0}老师大声宣布{1}{2}本学期的运动项目包括跳绳{3}跑步{4}游泳和打羽毛球{5}{6}", answers: ["，", "：", "“", "、", "、", "。", "”"] },
+            { text: "妈妈给我买了我最喜欢的文具{0}铅笔{1}橡皮擦和尺{2}", answers: ["：", "、", "。"] },
+            { text: "哥哥骄傲地对我说{0}{1}我会演奏很多乐器{2}比如钢琴{3}吉他和架子鼓{4}{5}", answers: ["：", "“", "，", "、", "。", "”"] },
+            { text: "店员阿姨热情地介绍{0}{1}我们这里有草莓味{2}巧克力味和香草味的冰淇淋{3}{4}", answers: ["：", "“", "、", "。", "”"] },
+            { text: "大家都亲切地叫弟弟{0}小猴子{1}{2}因为他活泼好动{3}总是喜欢跳来跳去{4}", answers: ["“", "”", "，", "，", "。"] },
+            { text: "公园的草地上立着一块木牌{0}上面写着{1}爱护花草{2}四个大字{3}提醒我们要保护环境{4}", answers: ["，", "“", "”", "，", "。"] },
+            { text: "动物园的解说员指着前方说{0}{1}大家快看{2}那里有斑马{3}长颈鹿{4}河马和犀牛{5}{6}", answers: ["：", "“", "，", "、", "、", "。", "”"] }
+        ];
+
+        let currentQuestionIndex = 0;
+        let currentQuestionAnswers = [];
+        let isReviewMode = false;
+        let reviewShowCorrect = false;
+
+        let activeQuestions = [];
+        let userHistory = [];
+        let selectedPunct = null; // 用于点击模式下的选中项
+
+        const questionContainer = document.getElementById('question-container');
+        const submitBtn = document.getElementById('submit-btn');
+        const progressSpan = document.getElementById('progress');
+        const messageDiv = document.getElementById('message');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        function shuffleQuestions(arr) {
+            let shuffled = [...arr];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function startGame() {
+            if(audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
+            activeQuestions = shuffleQuestions(questions);
+            userHistory = new Array(activeQuestions.length).fill(null);
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('celebration').style.display = 'none';
+            document.getElementById('main-game-ui').style.display = 'flex';
+            document.getElementById('nav-buttons').style.display = 'flex';
+            
+            isReviewMode = false;
+            document.getElementById('pool').style.display = 'flex';
+            document.getElementById('instruction-text').style.display = 'block';
+            document.getElementById('exit-review-btn').style.display = 'none';
+            
+            const toggleBtn = document.getElementById('toggle-answer-btn');
+            if (toggleBtn) toggleBtn.remove();
+            
+            playTone(400, 'sine', 0.1);
+            setTimeout(() => playTone(600, 'sine', 0.15), 100);
+            
+            initGame();
+        }
+
+        function initGame() {
+            setupPunctuationPoolEvents();
+            loadQuestion(0);
+        }
+
+        function loadQuestion(index) {
+            stopAllSounds();
+            clearSelectedPunctuation();
+            
+            currentQuestionIndex = index;
+            progressSpan.textContent = `${index + 1} / ${activeQuestions.length}`;
+            const q = activeQuestions[index];
+            
+            const savedHistory = userHistory[index];
+            
+            if (savedHistory && !isReviewMode) {
+                currentQuestionAnswers = [...savedHistory.submitted];
+            } else {
+                currentQuestionAnswers = new Array(q.answers.length).fill(null);
+            }
+            
+            let htmlContent = q.text;
+            q.answers.forEach((_, i) => {
+                htmlContent = htmlContent.replace(`{${i}}`, `<div class="drop-zone" data-index="${i}"></div>`);
+            });
+            
+            questionContainer.innerHTML = htmlContent;
+            
+            submitBtn.style.display = 'block';
+            submitBtn.style.background = '';
+            messageDiv.textContent = "";
+            messageDiv.className = "text-center mt-4 text-xl font-bold h-8";
+            questionContainer.className = "question-box";
+
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index === activeQuestions.length - 1;
+
+            setupDropZones();
+
+            if (isReviewMode) {
+                renderReviewState();
+            } else if (savedHistory) {
+                renderSubmittedState(savedHistory);
+            } else {
+                checkSubmitButtonStatus();
+                submitBtn.textContent = "提交答案";
+                submitBtn.onclick = handleSubmit;
+            }
+        }
+
+        function checkSubmitButtonStatus() {
+            // 当所有空槽都填满时激活提交按钮
+            const isAllFilled = currentQuestionAnswers.every(ans => ans !== null && ans !== '');
+            submitBtn.disabled = !isAllFilled;
+        }
+
+        function setupPunctuationPoolEvents() {
+            const poolItems = document.querySelectorAll('.punctuation-item');
+            
+            poolItems.forEach(item => {
+                // 1. HTML5 桌面拖拽
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', item.dataset.punct);
+                    clearSelectedPunctuation();
+                });
+
+                // 2. 点击/触摸选中逻辑
+                item.addEventListener('click', () => {
+                    if (isReviewMode) return;
+                    if (selectedPunct === item.dataset.punct && item.classList.contains('selected')) {
+                        clearSelectedPunctuation();
+                    } else {
+                        clearSelectedPunctuation();
+                        selectedPunct = item.dataset.punct;
+                        item.classList.add('selected');
+                        playTone(500, 'sine', 0.05);
+                    }
+                });
+
+                // 3. 移动端触摸拖拽 (Touch Events)
+                let touchGhost = null;
+
+                const removeGhosts = () => {
+                    document.querySelectorAll('.drag-ghost').forEach(g => g.remove());
+                    touchGhost = null;
+                };
+
+                item.addEventListener('touchstart', (e) => {
+                    if (isReviewMode) return;
+                    
+                    // 每次按下前清理所有残留残影
+                    removeGhosts();
+
+                    if (e.cancelable) e.preventDefault(); // 阻止长按弹出系统选中文本/菜单
+
+                    const touch = e.touches[0];
+                    const punct = item.dataset.punct;
+
+                    // 创建悬浮拖拽副本
+                    touchGhost = document.createElement('div');
+                    touchGhost.className = 'drag-ghost';
+                    touchGhost.textContent = punct;
+                    touchGhost.style.left = `${touch.clientX}px`;
+                    touchGhost.style.top = `${touch.clientY}px`;
+                    document.body.appendChild(touchGhost);
+
+                    item.dataset.isDraggingTouch = "true";
+                }, { passive: false });
+
+                item.addEventListener('touchmove', (e) => {
+                    if (!touchGhost) return;
+                    if (e.cancelable) e.preventDefault(); // 阻止滚动
+                    const touch = e.touches[0];
+                    touchGhost.style.left = `${touch.clientX}px`;
+                    touchGhost.style.top = `${touch.clientY}px`;
+                }, { passive: false });
+
+                item.addEventListener('touchend', (e) => {
+                    if (!touchGhost) return;
+                    const touch = e.changedTouches[0];
+                    
+                    // 寻找落点元素
+                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                    
+                    removeGhosts();
+
+                    if (dropTarget) {
+                        const zone = dropTarget.closest('.drop-zone');
+                        if (zone) {
+                            fillSlot(zone, item.dataset.punct);
+                        }
+                    }
+                });
+
+                item.addEventListener('touchcancel', () => {
+                    removeGhosts();
+                });
+            });
+        }
+
+        function clearSelectedPunctuation() {
+            selectedPunct = null;
+            document.querySelectorAll('.punctuation-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+        }
+
+        function setupDropZones() {
+            const dropZones = document.querySelectorAll('.drop-zone');
+            
+            dropZones.forEach(zone => {
+                const index = parseInt(zone.dataset.index);
+
+                // 如果当前槽已有记录，初始化填充
+                if (currentQuestionAnswers[index]) {
+                    zone.textContent = currentQuestionAnswers[index];
+                    zone.classList.add('filled');
+                }
+
+                if (isReviewMode) return;
+
+                // 1. HTML5 Drag Over & Leave
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('drag-over');
+                });
+
+                // 2. HTML5 Drop
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    const punct = e.dataTransfer.getData('text/plain');
+                    if (punct) {
+                        fillSlot(zone, punct);
+                    }
+                });
+
+                // 3. 点击或点按填入/移除
+                zone.addEventListener('click', () => {
+                    if (selectedPunct) {
+                        fillSlot(zone, selectedPunct);
+                        clearSelectedPunctuation();
+                    } else if (zone.classList.contains('filled') && !userHistory[currentQuestionIndex]) {
+                        // 如果已填入且当前题目未提交，点击可清空
+                        clearSlot(zone);
+                    }
+                });
+            });
+        }
+
+        function fillSlot(zone, punct) {
+            const index = parseInt(zone.dataset.index);
+            zone.textContent = punct;
+            zone.classList.add('filled');
+            currentQuestionAnswers[index] = punct;
+            soundEffects.drop();
+            checkSubmitButtonStatus();
+        }
+
+        function clearSlot(zone) {
+            const index = parseInt(zone.dataset.index);
+            zone.textContent = '';
+            zone.classList.remove('filled');
+            currentQuestionAnswers[index] = null;
+            checkSubmitButtonStatus();
+        }
+
+        function renderSubmittedState(history) {
+            const dropZones = document.querySelectorAll('.drop-zone');
+            const q = activeQuestions[currentQuestionIndex];
+            
+            dropZones.forEach((zone, i) => {
+                const userPunct = history.submitted[i];
+                zone.textContent = userPunct || '';
+                if (userPunct) zone.classList.add('filled');
+                
+                if (userPunct === q.answers[i]) {
+                    zone.style.borderColor = '#22c55e';
+                    zone.style.backgroundColor = '#dcfce7';
+                    zone.style.color = '#166534';
+                } else {
+                    zone.style.borderColor = '#ef4444';
+                    zone.style.backgroundColor = '#fee2e2';
+                    zone.style.color = '#b91c1c';
+                }
+            });
+
+            if (history.correct) {
+                messageDiv.textContent = "这题你答对啦！🎉";
+                messageDiv.className = "text-center mt-4 text-xl font-bold h-8 text-green-600";
+            } else {
+                messageDiv.textContent = "这题作答有误，没关系！💪";
+                messageDiv.className = "text-center mt-4 text-xl font-bold h-8 text-orange-500";
+            }
+
+            submitBtn.disabled = false;
+            if (currentQuestionIndex < activeQuestions.length - 1) {
+                submitBtn.textContent = "下一题 ➡️";
+                submitBtn.style.background = "linear-gradient(to bottom, #3b82f6, #2563eb)";
+                submitBtn.style.boxShadow = "0 6px 0 #1d4ed8";
+                submitBtn.onclick = handleNextQuestion;
+            } else {
+                submitBtn.textContent = "查看总分 🏆";
+                submitBtn.style.background = "linear-gradient(to bottom, #eab308, #ca8a04)";
+                submitBtn.style.boxShadow = "0 6px 0 #a16207";
+                submitBtn.onclick = showCelebration;
+            }
+        }
+
+        function handleSubmit() {
+            clearSelectedPunctuation();
+            const q = activeQuestions[currentQuestionIndex];
+            let isCorrect = true;
+            
+            for (let i = 0; i < q.answers.length; i++) {
+                if (currentQuestionAnswers[i] !== q.answers[i]) {
+                    isCorrect = false;
+                    break;
+                }
+            }
+
+            userHistory[currentQuestionIndex] = {
+                submitted: [...currentQuestionAnswers],
+                correct: isCorrect
+            };
+
+            const dropZones = document.querySelectorAll('.drop-zone');
+
+            if (isCorrect) {
+                soundEffects.correct();
+                messageDiv.textContent = "答对啦！太棒了！🎉";
+                messageDiv.className = "text-center mt-4 text-xl font-bold h-8 text-green-600";
+                questionContainer.classList.add('correct-anim');
+                
+                dropZones.forEach(dz => {
+                    dz.style.borderColor = '#22c55e';
+                    dz.style.backgroundColor = '#dcfce7';
+                    dz.style.color = '#166534';
+                });
+            } else {
+                soundEffects.wrong();
+                messageDiv.textContent = "这题没完全答对，继续加油！💪";
+                messageDiv.className = "text-center mt-4 text-xl font-bold h-8 text-orange-600";
+                
+                questionContainer.classList.remove('wrong-anim');
+                void questionContainer.offsetWidth;
+                questionContainer.classList.add('wrong-anim');
+                
+                dropZones.forEach((dz, i) => {
+                    if (currentQuestionAnswers[i] !== q.answers[i]) {
+                        dz.style.borderColor = '#ef4444';
+                        dz.style.backgroundColor = '#fee2e2';
+                        dz.style.color = '#b91c1c';
+                    } else {
+                        dz.style.borderColor = '#22c55e';
+                        dz.style.backgroundColor = '#dcfce7';
+                    }
+                });
+            }
+
+            if (currentQuestionIndex < activeQuestions.length - 1) {
+                submitBtn.textContent = "下一题 ➡️";
+                submitBtn.style.background = "linear-gradient(to bottom, #3b82f6, #2563eb)";
+                submitBtn.style.boxShadow = "0 6px 0 #1d4ed8";
+                submitBtn.onclick = handleNextQuestion;
+            } else {
+                submitBtn.textContent = "查看总分 🏆";
+                submitBtn.style.background = "linear-gradient(to bottom, #eab308, #ca8a04)";
+                submitBtn.style.boxShadow = "0 6px 0 #a16207";
+                submitBtn.onclick = showCelebration;
+            }
+        }
+
+        function handleNextQuestion() {
+            stopAllSounds();
+            submitBtn.onclick = handleSubmit;
+            if (currentQuestionIndex < activeQuestions.length - 1) {
+                loadQuestion(currentQuestionIndex + 1);
+            } else {
+                showCelebration();
+            }
+        }
+
+        function goToPrevQuestion() {
+            if (currentQuestionIndex > 0) {
+                loadQuestion(currentQuestionIndex - 1);
+            }
+        }
+
+        function goToNextQuestion() {
+            if (currentQuestionIndex < activeQuestions.length - 1) {
+                loadQuestion(currentQuestionIndex + 1);
+            }
+        }
+
+        function showCelebration() {
+            stopAllSounds();
+            document.getElementById('celebration').style.display = 'flex';
+            document.getElementById('nav-buttons').style.display = 'none';
+            
+            const correctCount = userHistory.filter(h => h && h.correct).length;
+            const totalCount = activeQuestions.length;
+            const score = Math.round((correctCount / totalCount) * 100);
+
+            const scoreDisplay = document.getElementById('score-display');
+            scoreDisplay.innerHTML = `得分：<span class="text-yellow-300 text-4xl font-extrabold">${score}</span> 分 <br><span class="text-xl">(${correctCount} / ${totalCount} 题)</span>`;
+
+            const subtitle = document.getElementById('celebration-subtitle');
+            if (score === 100) {
+                subtitle.textContent = "🌟 太厉害了！全对满分！你真是标点符号小大师！";
+            } else if (score >= 80) {
+                subtitle.textContent = "🎉 表现真不错！你对标点符号掌握得很好！继续保持哦！";
+            } else if (score >= 60) {
+                subtitle.textContent = "👍 不错哦！继续练习，你会变得更棒！";
+            } else {
+                subtitle.textContent = "💪 加油！点击“回看答题痕迹”复习一下正确答案吧！";
+            }
+
+            soundEffects.correct();
+        }
+
+        function startReview() {
+            isReviewMode = true;
+            reviewShowCorrect = false;
+
+            document.getElementById('celebration').style.display = 'none';
+            document.getElementById('main-game-ui').style.display = 'flex';
+            document.getElementById('nav-buttons').style.display = 'flex';
+            
+            document.getElementById('pool').style.display = 'none';
+            document.getElementById('instruction-text').style.display = 'none';
+            document.getElementById('submit-btn').style.display = 'none';
+            
+            const exitBtn = document.getElementById('exit-review-btn');
+            exitBtn.style.display = 'inline-block';
+
+            let toggleBtn = document.getElementById('toggle-answer-btn');
+            if (!toggleBtn) {
+                toggleBtn = document.createElement('button');
+                toggleBtn.id = 'toggle-answer-btn';
+                toggleBtn.className = 'nav-btn';
+                toggleBtn.style.backgroundColor = '#8b5cf6';
+                toggleBtn.style.boxShadow = '0 4px 0 #6d28d9';
+                toggleBtn.onclick = toggleReviewAnswerView;
+                document.getElementById('nav-buttons').insertBefore(toggleBtn, exitBtn);
+            }
+            updateToggleBtnText();
+
+            loadQuestion(0);
+        }
+
+        function toggleReviewAnswerView() {
+            reviewShowCorrect = !reviewShowCorrect;
+            updateToggleBtnText();
+            renderReviewState();
+        }
+
+        function updateToggleBtnText() {
+            const toggleBtn = document.getElementById('toggle-answer-btn');
+            if (toggleBtn) {
+                toggleBtn.textContent = reviewShowCorrect ? "👀 查看我的作答" : "💡 查看正确答案";
+            }
+        }
+
+        function renderReviewState() {
+            const q = activeQuestions[currentQuestionIndex];
+            const dropZones = document.querySelectorAll('.drop-zone');
+            const history = userHistory[currentQuestionIndex];
+
+            if (reviewShowCorrect) {
+                dropZones.forEach((zone, i) => {
+                    zone.textContent = q.answers[i];
+                    zone.classList.add('filled');
+                    zone.style.borderColor = '#22c55e';
+                    zone.style.backgroundColor = '#dcfce7';
+                    zone.style.color = '#166534';
+                });
+                messageDiv.textContent = "💡 当前显示：标准正确答案";
+                messageDiv.className = "text-center mt-4 text-xl font-bold h-8 text-blue-600";
+            } else {
+                if (!history) {
+                    dropZones.forEach(zone => {
+                        zone.textContent = '';
+                        zone.className = 'drop-zone';
+                    });
+                    messageDiv.textContent = "📝 该题未作答";
+                    messageDiv.className = "text-center mt-4 text-xl font-bold h-8 text-gray-500";
+                } else {
+                    dropZones.forEach((zone, i) => {
+                        const userAns = history.submitted[i];
+                        zone.textContent = userAns || '';
+                        if (userAns) zone.classList.add('filled');
+                        
+                        if (userAns === q.answers[i]) {
+                            zone.style.borderColor = '#22c55e';
+                            zone.style.backgroundColor = '#dcfce7';
+                            zone.style.color = '#166534';
+                        } else {
+                            zone.style.borderColor = '#ef4444';
+                            zone.style.backgroundColor = '#fee2e2';
+                            zone.style.color = '#b91c1c';
+                        }
+                    });
+
+                    if (history.correct) {
+                        messageDiv.textContent = "📝 你的回答：回答正确！👏";
+                        messageDiv.className = "text-center mt-4 text-xl font-bold h-8 text-green-600";
+                    } else {
+                        messageDiv.textContent = "📝 你的回答：有解答不准确的地方 (红色框)";
+                        messageDiv.className = "text-center mt-4 text-xl font-bold h-8 text-red-500";
+                    }
+                }
+            }
+
+            submitBtn.style.display = 'none';
+        }
+
+        function exitReview() {
+            isReviewMode = false;
+            document.getElementById('main-game-ui').style.display = 'none';
+            document.getElementById('celebration').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
